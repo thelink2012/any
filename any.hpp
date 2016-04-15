@@ -90,7 +90,7 @@ public:
     ///
     /// T shall satisfy the CopyConstructible requirements, except for the requirements for MoveConstructible.
     /// (this is unlike N4562 specifies, see LWG Defect 2509).
-    template<typename ValueType, typename = std::enable_if_t<!std::is_same<std::decay_t<ValueType>, any>::value>>
+    template<typename ValueType, typename = typename std::enable_if<!std::is_same<typename std::decay<ValueType>::type, any>::value>::type>
     any(ValueType&& value)
     {
         this->construct(std::forward<ValueType>(value));
@@ -117,7 +117,7 @@ public:
     ///
     /// T shall satisfy the CopyConstructible requirements, except for the requirements for MoveConstructible.
     /// (this is unlike N4562 specifies, see LWG Defect 2509).
-    template<typename ValueType, typename = std::enable_if_t<!std::is_same<std::decay_t<ValueType>, any>::value>>
+    template<typename ValueType, typename = typename std::enable_if<!std::is_same<typename std::decay<ValueType>::type, any>::value>::type>
     any& operator=(ValueType&& value)
     {
         any(std::forward<ValueType>(value)).swap(*this);
@@ -180,8 +180,10 @@ private: // Storage and Virtual Method Table
 
     union storage_union
     {
-        void*                                                       dynamic;
-        std::aligned_storage_t<2 * sizeof(void*), alignof(void*)>   stack;      // 2 words for e.g. shared_ptr
+        using stack_storage_t = typename std::aligned_storage<2 * sizeof(void*), std::alignment_of<void*>::value>::type;
+
+        void*               dynamic;
+        stack_storage_t     stack;      // 2 words for e.g. shared_ptr
     };
 
     /// Base VTable specification.
@@ -277,18 +279,18 @@ private: // Storage and Virtual Method Table
 
     /// Whether the type T must be dynamically allocated or can be stored on the stack.
     template<typename T>
-    static constexpr bool requires_allocation()
-    {
-        return !(std::is_nothrow_move_constructible<T>::value      // N4562 §6.3/3 [any.class]
-            && sizeof(T) <= sizeof(storage_union::stack)
-            && alignof(T) <= alignof(decltype(storage_union::stack)));
-    }
+    struct requires_allocation :
+        std::integral_constant<bool,
+                !(std::is_nothrow_move_constructible<T>::value      // N4562 §6.3/3 [any.class]
+                  && sizeof(T) <= sizeof(storage_union::stack)
+                  && std::alignment_of<T>::value <= std::alignment_of<storage_union::stack_storage_t>::value)>
+    {};
 
     /// Returns the pointer to the vtable of the type T.
     template<typename T>
     static vtable_type* vtable_for_type()
     {
-        using VTableType = std::conditional_t<requires_allocation<T>(), vtable_dynamic<T>, vtable_stack<T>>;
+        using VTableType = typename std::conditional<requires_allocation<T>::value, vtable_dynamic<T>, vtable_stack<T>>::type;
         static vtable_type table = {
             VTableType::type, VTableType::destroy,
             VTableType::copy, VTableType::move,
@@ -328,7 +330,7 @@ protected:
     template<typename T>
     const T* cast() const noexcept
     {
-        return requires_allocation<T>()?
+        return requires_allocation<T>::value?
             reinterpret_cast<const T*>(storage.dynamic) :
             reinterpret_cast<const T*>(&storage.stack);
     }
@@ -337,7 +339,7 @@ protected:
     template<typename T>
     T* cast() noexcept
     {
-        return requires_allocation<T>()?
+        return requires_allocation<T>::value?
             reinterpret_cast<T*>(storage.dynamic) :
             reinterpret_cast<T*>(&storage.stack);
     }
@@ -351,13 +353,97 @@ private:
     template<typename ValueType>
     void construct(ValueType&& value)
     {
-        using T = std::decay_t<ValueType>;
+        using T = typename std::decay<ValueType>::type;
 
         this->vtable = vtable_for_type<T>();
 
-        if(requires_allocation<T>())
+        if(requires_allocation<T>::value)
             storage.dynamic = new T(std::forward<ValueType>(value));
         else
             new (&storage.stack) T(std::forward<ValueType>(value));
     }
 };
+
+
+
+namespace detail
+{
+    template<typename ValueType>
+    inline ValueType any_cast_move_if_true(typename std::remove_reference<ValueType>::type* p, std::true_type)
+    {
+        return std::move(*p);
+    }
+
+    template<typename ValueType>
+    inline ValueType any_cast_move_if_true(typename std::remove_reference<ValueType>::type* p, std::false_type)
+    {
+        return *p;
+    }
+}
+
+/// Performs *any_cast<add_const_t<remove_reference_t<ValueType>>>(&operand), or throws bad_any_cast on failure.
+template<typename ValueType>
+inline ValueType any_cast(const any& operand)
+{
+    auto p = any_cast<typename std::add_const<typename std::remove_reference<ValueType>::type>::type>(&operand);
+    if(p == nullptr) throw bad_any_cast();
+    return *p;
+}
+
+/// Performs *any_cast<remove_reference_t<ValueType>>(&operand), or throws bad_any_cast on failure.
+template<typename ValueType>
+inline ValueType any_cast(any& operand)
+{
+    auto p = any_cast<typename std::remove_reference<ValueType>::type>(&operand);
+    if(p == nullptr) throw bad_any_cast();
+    return *p;
+}
+
+/// If ValueType is MoveConstructible and isn't a lvalue reference, performs
+/// std::move(*any_cast<remove_reference_t<ValueType>>(&operand)), otherwise
+/// *any_cast<remove_reference_t<ValueType>>(&operand). Throws bad_any_cast on failure.
+template<typename ValueType>
+inline ValueType any_cast(any&& operand)
+{
+    // https://cplusplus.github.io/LWG/lwg-active.html#2509
+
+    using can_move = std::integral_constant<bool,
+        std::is_move_constructible<ValueType>::value
+        && !std::is_lvalue_reference<ValueType>::value>;
+
+    auto p = any_cast<typename std::remove_reference<ValueType>::type>(&operand);
+    if(p == nullptr) throw bad_any_cast();
+    return detail::any_cast_move_if_true<ValueType>(p, can_move());
+}
+
+/// If operand != nullptr && operand->type() == typeid(ValueType), a pointer to the object
+/// contained by operand, otherwise nullptr.
+template<typename T>
+inline const T* any_cast(const any* operand) noexcept
+{
+    if(operand == nullptr || !operand->is_typed(typeid(T)))
+        return nullptr;
+    else
+        return operand->cast<T>();
+}
+
+/// If operand != nullptr && operand->type() == typeid(ValueType), a pointer to the object
+/// contained by operand, otherwise nullptr.
+template<typename T>
+inline T* any_cast(any* operand) noexcept
+{
+    if(operand == nullptr || !operand->is_typed(typeid(T)))
+        return nullptr;
+    else
+        return operand->cast<T>();
+}
+
+}
+
+namespace std
+{
+    inline void swap(linb::any& lhs, linb::any& rhs) noexcept
+    {
+        lhs.swap(rhs);
+    }
+}
