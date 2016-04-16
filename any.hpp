@@ -71,7 +71,7 @@ public:
     /// Constructs an object of type any with a state equivalent to the original state of other.
     /// rhs is left in a valid but otherwise unspecified state.
     any(any&& rhs) noexcept :
-    vtable(rhs.vtable)
+        vtable(rhs.vtable)
     {
         if(!rhs.empty())
         {
