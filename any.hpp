@@ -1,38 +1,18 @@
-///
-/// Implementation of N4562 std::experimental::any plus a proposed fix on LWG Defect 2509.
-///
-/// See also:
-///   + http://en.cppreference.com/w/cpp/experimental/any
-///   + http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4562.html#any
-///   + https://cplusplus.github.io/LWG/lwg-active.html#2509
-///
-///
-///
-/// This is free and unencumbered software released into the public domain.
-/// 
-/// Anyone is free to copy, modify, publish, use, compile, sell, or
-/// distribute this software, either in source code form or as a compiled
-/// binary, for any purpose, commercial or non - commercial, and by any
-/// means.
-/// 
-/// In jurisdictions that recognize copyright laws, the author or authors
-/// of this software dedicate any and all copyright interest in the
-/// software to the public domain.We make this dedication for the benefit
-/// of the public at large and to the detriment of our heirs and
-/// successors.We intend this dedication to be an overt act of
-/// relinquishment in perpetuity of all present and future rights to this
-/// software under copyright law.
-/// 
-/// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-/// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-/// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-/// IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
-/// OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
-/// ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
-/// OTHER DEALINGS IN THE SOFTWARE.
-/// 
-/// For more information, please refer to <http://unlicense.org/>
-///
+//
+// Implementation of N4562 std::experimental::any (merged into C++17) for C++11 compilers.
+//
+// See also:
+//   + http://en.cppreference.com/w/cpp/any
+//   + http://en.cppreference.com/w/cpp/experimental/any
+//   + http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4562.html#any
+//   + https://cplusplus.github.io/LWG/lwg-active.html#2509
+//
+//
+// Copyright (c) 2016 Denilson das Mercês Amorim
+//
+// Distributed under the Boost Software License, Version 1.0. (See accompanying
+// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+//
 #ifndef LINB_ANY_HPP
 #define LINB_ANY_HPP
 #pragma once
