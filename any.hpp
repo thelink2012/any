@@ -33,6 +33,9 @@
 /// 
 /// For more information, please refer to <http://unlicense.org/>
 ///
+#ifndef LINB_ANY_HPP
+#define LINB_ANY_HPP
+#pragma once
 #include <typeinfo>
 #include <type_traits>
 #include <stdexcept>
@@ -88,11 +91,13 @@ public:
 
     /// Constructs an object of type any that contains an object of type T direct-initialized with std::forward<ValueType>(value).
     ///
-    /// T shall satisfy the CopyConstructible requirements, except for the requirements for MoveConstructible.
-    /// (this is unlike N4562 specifies, see LWG Defect 2509).
+    /// T shall satisfy the CopyConstructible requirements, otherwise the program is ill-formed.
+    /// This is because an `any` may be copy constructed into another `any` at any time, so a copy should always be allowed.
     template<typename ValueType, typename = typename std::enable_if<!std::is_same<typename std::decay<ValueType>::type, any>::value>::type>
     any(ValueType&& value)
     {
+        static_assert(std::is_copy_constructible<typename std::decay<ValueType>::type>::value,
+            "T shall satisfy the CopyConstructible requirements.");
         this->construct(std::forward<ValueType>(value));
     }
 
@@ -115,11 +120,13 @@ public:
 
     /// Has the same effect as any(std::forward<ValueType>(value)).swap(*this). No effect if a exception is thrown.
     ///
-    /// T shall satisfy the CopyConstructible requirements, except for the requirements for MoveConstructible.
-    /// (this is unlike N4562 specifies, see LWG Defect 2509).
+    /// T shall satisfy the CopyConstructible requirements, otherwise the program is ill-formed.
+    /// This is because an `any` may be copy constructed into another `any` at any time, so a copy should always be allowed.
     template<typename ValueType, typename = typename std::enable_if<!std::is_same<typename std::decay<ValueType>::type, any>::value>::type>
     any& operator=(ValueType&& value)
     {
+        static_assert(std::is_copy_constructible<typename std::decay<ValueType>::type>::value,
+            "T shall satisfy the CopyConstructible requirements.");
         any(std::forward<ValueType>(value)).swap(*this);
         return *this;
     }
@@ -399,17 +406,26 @@ inline ValueType any_cast(any& operand)
     return *p;
 }
 
-/// If ValueType is MoveConstructible and isn't a lvalue reference, performs
-/// std::move(*any_cast<remove_reference_t<ValueType>>(&operand)), otherwise
-/// *any_cast<remove_reference_t<ValueType>>(&operand). Throws bad_any_cast on failure.
+///
+/// If ANY_IMPL_ANYCAST_MOVEABLE is not defined, does as N4562 specifies:
+///     Performs *any_cast<remove_reference_t<ValueType>>(&operand), or throws bad_any_cast on failure.
+///
+/// If ANY_IMPL_ANYCAST_MOVEABLE is defined, does as LWG Defect 2509 specifies:
+///     If ValueType is MoveConstructible and isn't a lvalue reference, performs
+///     std::move(*any_cast<remove_reference_t<ValueType>>(&operand)), otherwise
+///     *any_cast<remove_reference_t<ValueType>>(&operand). Throws bad_any_cast on failure.
+///
 template<typename ValueType>
 inline ValueType any_cast(any&& operand)
 {
+#ifdef ANY_IMPL_ANY_CAST_MOVEABLE
     // https://cplusplus.github.io/LWG/lwg-active.html#2509
-
     using can_move = std::integral_constant<bool,
         std::is_move_constructible<ValueType>::value
         && !std::is_lvalue_reference<ValueType>::value>;
+#else
+    using can_move = std::false_type;
+#endif
 
     auto p = any_cast<typename std::remove_reference<ValueType>::type>(&operand);
     if(p == nullptr) throw bad_any_cast();
@@ -447,3 +463,5 @@ namespace std
         lhs.swap(rhs);
     }
 }
+
+#endif

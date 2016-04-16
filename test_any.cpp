@@ -1,4 +1,4 @@
-// Very simplist test, could be improved.
+// Very simplist test, could be better.
 
 #include "any.hpp"
 #include <memory>
