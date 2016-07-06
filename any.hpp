@@ -317,7 +317,7 @@ protected:
     template<typename T>
     const T* cast() const noexcept
     {
-        return requires_allocation<T>::value?
+        return requires_allocation<typename std::decay<T>::type>::value?
             reinterpret_cast<const T*>(storage.dynamic) :
             reinterpret_cast<const T*>(&storage.stack);
     }
@@ -326,7 +326,7 @@ protected:
     template<typename T>
     T* cast() noexcept
     {
-        return requires_allocation<T>::value?
+        return requires_allocation<typename std::decay<T>::type>::value?
             reinterpret_cast<T*>(storage.dynamic) :
             reinterpret_cast<T*>(&storage.stack);
     }

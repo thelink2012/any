@@ -32,6 +32,17 @@ struct big_type
     }
 };
 
+// small type which has nothrow move ctor but throw copy ctor
+struct regression1_type
+{
+    const void* confuse_stack_storage = (void*)(0);
+    regression1_type() {}
+    regression1_type(const regression1_type&) {}
+    regression1_type(regression1_type&&) noexcept {}
+    regression1_type& operator=(const regression1_type&) { return *this; }
+    regression1_type& operator=(regression1_type&&) { return *this; }
+};
+
 int main()
 {
     using linb::any;
@@ -184,5 +195,9 @@ int main()
         CHECK(!is_stack_allocated(big, any_cast<big_type>(&big)));
         CHECK(is_stack_allocated(w2, any_cast<words<2>>(&w2)));
         CHECK(!is_stack_allocated(w3, any_cast<words<3>>(&w3)));
+
+        // Regression test for GitHub Issue #1
+        any r1 = regression1_type();
+        CHECK(is_stack_allocated(r1, any_cast<const regression1_type>(&r1)));
     }
 }
