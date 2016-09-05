@@ -4,7 +4,7 @@ This is a implementation of [N4562](http://www.open-std.org/jtc1/sc22/wg21/docs/
 
 It contains a small object optimization for objects with a size of up to 2 words (such as  `int`, `float` and `std::shared_ptr`). Storing those objects in the container will not trigger a dynamic allocation.
 
-For a easy to understand documentation, see [cppreference](http://en.cppreference.com/w/cpp/utility/any), except our namespace is `linb`.
+For a easy to understand documentation, see [cppreference](http://en.cppreference.com/w/cpp/experimental/any), except our namespace is `linb`.
 
 ## Defines
 
