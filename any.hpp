@@ -397,6 +397,30 @@ inline ValueType any_cast(any& operand)
     return *p;
 }
 
+template<typename ValueType>
+inline bool any_cast_test(const any& operand, ValueType const& result)
+{
+    auto p = any_cast<typename std::add_const<typename std::remove_reference<ValueType>::type>::type>(&operand);
+		if(p != nullptr) 
+		{
+			result = *p;
+			return true;
+		}
+    return false;
+}
+
+template<typename ValueType>
+inline bool any_cast_test(any& operand, ValueType& result)
+{
+    auto p = any_cast<typename std::remove_reference<ValueType>::type>(&operand);
+		if(p != nullptr) 
+		{
+			result = *p;
+			return true;
+		}
+    return false;
+}
+
 ///
 /// If ANY_IMPL_ANYCAST_MOVEABLE is not defined, does as N4562 specifies:
 ///     Performs *any_cast<remove_reference_t<ValueType>>(&operand), or throws bad_any_cast on failure.
