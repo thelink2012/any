@@ -381,19 +381,35 @@ namespace detail
 
 /// Performs *any_cast<add_const_t<remove_reference_t<ValueType>>>(&operand), or throws bad_any_cast on failure.
 template<typename ValueType>
-inline ValueType any_cast(const any& operand)
+inline ValueType any_cast(const any& operand, typename std::enable_if<!std::is_pointer<ValueType>::value>::type* = 0)
 {
     auto p = any_cast<typename std::add_const<typename std::remove_reference<ValueType>::type>::type>(&operand);
     if(p == nullptr) throw bad_any_cast();
     return *p;
 }
 
+template<typename ValueType>
+inline typename std::enable_if<std::is_pointer<ValueType>::value, ValueType>::type any_cast(const any& operand)
+{
+    auto p = any_cast<typename std::add_const<typename std::remove_reference<ValueType>::type>::type>(&operand);
+		if(p == nullptr) return nullptr;
+    return *p;
+}
+
 /// Performs *any_cast<remove_reference_t<ValueType>>(&operand), or throws bad_any_cast on failure.
 template<typename ValueType>
-inline ValueType any_cast(any& operand)
+inline ValueType any_cast(any& operand, typename std::enable_if<!std::is_pointer<ValueType>::value>::type* = 0)
 {
     auto p = any_cast<typename std::remove_reference<ValueType>::type>(&operand);
     if(p == nullptr) throw bad_any_cast();
+    return *p;
+}
+
+template<typename ValueType>
+inline typename std::enable_if<std::is_pointer<ValueType>::value, ValueType>::type any_cast(any& operand)
+{
+    auto p = any_cast<typename std::remove_reference<ValueType>::type>(&operand);
+		if(p == nullptr) return nullptr;
     return *p;
 }
 
