@@ -127,13 +127,11 @@ public:
         return this->vtable == nullptr;
     }
 
-#ifdef __cpp_rtti
     /// If *this has a contained object of type T, typeid(T); otherwise typeid(void).
     const std::type_info& type() const noexcept
     {
         return empty()? typeid(void) : this->vtable->type();
     }
-#endif
 
     /// Exchange the states of *this and rhs.
     void swap(any& rhs) noexcept
@@ -181,10 +179,8 @@ private: // Storage and Virtual Method Table
         // Note: The caller is responssible for doing .vtable = nullptr after destructful operations
         // such as destroy() and/or move().
 
-#ifdef __cpp_rtti
         /// The type of the object this vtable is for.
         const std::type_info& (*type)() noexcept;
-#endif
 
         /// Destroys the object in the union.
         /// The state of the union after this call is unspecified, caller must ensure not to use src anymore.
@@ -206,12 +202,10 @@ private: // Storage and Virtual Method Table
     template<typename T>
     struct vtable_dynamic
     {
-#ifdef __cpp_rtti
         static const std::type_info& type() noexcept
         {
             return typeid(T);
         }
-#endif
 
         static void destroy(storage_union& storage) noexcept
         {
@@ -241,12 +235,10 @@ private: // Storage and Virtual Method Table
     template<typename T>
     struct vtable_stack
     {
-#ifdef __cpp_rtti
         static const std::type_info& type() noexcept
         {
             return typeid(T);
         }
-#endif
 
         static void destroy(storage_union& storage) noexcept
         {
@@ -290,10 +282,7 @@ private: // Storage and Virtual Method Table
     {
         using VTableType = typename std::conditional<requires_allocation<T>::value, vtable_dynamic<T>, vtable_stack<T>>::type;
         static vtable_type table = {
-#ifdef __cpp_rtti
-            VTableType::type,
-#endif
-            VTableType::destroy,
+            VTableType::type, VTableType::destroy,
             VTableType::copy, VTableType::move,
             VTableType::swap,
         };
@@ -305,6 +294,27 @@ protected:
     friend const T* any_cast(const any* operand) noexcept;
     template<typename T>
     friend T* any_cast(any* operand) noexcept;
+
+    /// Same effect as is_same(this->type(), t);
+    bool is_typed(const std::type_info& t) const
+    {
+        return is_same(this->type(), t);
+    }
+
+    /// Checks if two type infos are the same.
+    ///
+    /// If ANY_IMPL_FAST_TYPE_INFO_COMPARE is defined, checks only the address of the
+    /// type infos, otherwise does an actual comparision. Checking addresses is
+    /// only a valid approach when there's no interaction with outside sources
+    /// (other shared libraries and such).
+    static bool is_same(const std::type_info& a, const std::type_info& b)
+    {
+#ifdef ANY_IMPL_FAST_TYPE_INFO_COMPARE
+        return &a == &b;
+#else
+        return a == b;
+#endif
+    }
 
     /// Casts (with no type_info checks) the storage pointer as const T*.
     template<typename T>
@@ -377,9 +387,7 @@ template<typename ValueType>
 inline ValueType any_cast(const any& operand)
 {
     auto p = any_cast<typename std::add_const<typename std::remove_reference<ValueType>::type>::type>(&operand);
-#ifdef __cpp_exceptions
     if(p == nullptr) throw bad_any_cast();
-#endif
     return *p;
 }
 
@@ -388,9 +396,7 @@ template<typename ValueType>
 inline ValueType any_cast(any& operand)
 {
     auto p = any_cast<typename std::remove_reference<ValueType>::type>(&operand);
-#ifdef __cpp_exceptions
     if(p == nullptr) throw bad_any_cast();
-#endif
     return *p;
 }
 
@@ -416,9 +422,7 @@ inline ValueType any_cast(any&& operand)
 #endif
 
     auto p = any_cast<typename std::remove_reference<ValueType>::type>(&operand);
-#ifdef __cpp_exceptions
     if(p == nullptr) throw bad_any_cast();
-#endif
     return detail::any_cast_move_if_true<ValueType>(p, can_move());
 }
 
@@ -427,10 +431,10 @@ inline ValueType any_cast(any&& operand)
 template<typename T>
 inline const T* any_cast(const any* operand) noexcept
 {
-    if (operand && operand->vtable == any::vtable_for_type<T>())
-        return operand->cast<T>();
-    else
+    if(operand == nullptr || !operand->is_typed(typeid(T)))
         return nullptr;
+    else
+        return operand->cast<T>();
 }
 
 /// If operand != nullptr && operand->type() == typeid(ValueType), a pointer to the object
@@ -438,10 +442,10 @@ inline const T* any_cast(const any* operand) noexcept
 template<typename T>
 inline T* any_cast(any* operand) noexcept
 {
-    if (operand && operand->vtable == any::vtable_for_type<T>())
-        return operand->cast<T>();
-    else
+    if(operand == nullptr || !operand->is_typed(typeid(T)))
         return nullptr;
+    else
+        return operand->cast<T>();
 }
 
 }
