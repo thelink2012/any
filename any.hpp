@@ -19,6 +19,7 @@
 #include <typeinfo>
 #include <type_traits>
 #include <stdexcept>
+#include <string.h>
 
 namespace linb
 {
@@ -110,6 +111,32 @@ public:
         any(std::forward<ValueType>(value)).swap(*this);
         return *this;
     }
+		
+		template<class T, typename std::enable_if<!std::is_same<T,any>::value>::type* = 0>
+		bool operator==(const T &value) const
+		{
+			if(is_typed(typeid(T))) 
+			{
+				auto resultPtr = cast<T>();
+				if (resultPtr != nullptr)
+					return value == *resultPtr;
+			}
+			return false;
+		}
+
+    bool operator==(const any &rhs) const
+		{
+			if(is_typed(rhs.type())) 
+			{
+				if (vtable->requires_allocation)
+					return storage.dynamic == rhs.storage.dynamic;
+				
+				return vtable->data_size == rhs.vtable->data_size &&
+								::memcmp(storage.stack.__data, rhs.storage.stack.__data, vtable->data_size) == 0;
+			}
+			return false;
+		}
+
 
     /// If not empty, destroys the contained object.
     void clear() noexcept
@@ -178,6 +205,10 @@ private: // Storage and Virtual Method Table
     {
         // Note: The caller is responssible for doing .vtable = nullptr after destructful operations
         // such as destroy() and/or move().
+			
+				const bool requires_allocation;
+				
+				const size_t data_size;
 
         /// The type of the object this vtable is for.
         const std::type_info& (*type)() noexcept;
@@ -282,6 +313,7 @@ private: // Storage and Virtual Method Table
     {
         using VTableType = typename std::conditional<requires_allocation<T>::value, vtable_dynamic<T>, vtable_stack<T>>::type;
         static vtable_type table = {
+					requires_allocation<T>::value, sizeof(T),
             VTableType::type, VTableType::destroy,
             VTableType::copy, VTableType::move,
             VTableType::swap,
@@ -384,20 +416,60 @@ namespace detail
 
 /// Performs *any_cast<add_const_t<remove_reference_t<ValueType>>>(&operand), or throws bad_any_cast on failure.
 template<typename ValueType>
-inline ValueType any_cast(const any& operand)
+inline ValueType any_cast(const any& operand, typename std::enable_if<!std::is_pointer<ValueType>::value>::type* = 0)
 {
     auto p = any_cast<typename std::add_const<typename std::remove_reference<ValueType>::type>::type>(&operand);
     if(p == nullptr) throw bad_any_cast();
     return *p;
 }
 
+template<typename ValueType>
+inline typename std::enable_if<std::is_pointer<ValueType>::value, ValueType>::type any_cast(const any& operand)
+{
+    auto p = any_cast<typename std::add_const<typename std::remove_reference<ValueType>::type>::type>(&operand);
+		if(p == nullptr) return nullptr;
+    return *p;
+}
+
 /// Performs *any_cast<remove_reference_t<ValueType>>(&operand), or throws bad_any_cast on failure.
 template<typename ValueType>
-inline ValueType any_cast(any& operand)
+inline ValueType any_cast(any& operand, typename std::enable_if<!std::is_pointer<ValueType>::value>::type* = 0)
 {
     auto p = any_cast<typename std::remove_reference<ValueType>::type>(&operand);
     if(p == nullptr) throw bad_any_cast();
     return *p;
+}
+
+template<typename ValueType>
+inline typename std::enable_if<std::is_pointer<ValueType>::value, ValueType>::type any_cast(any& operand)
+{
+    auto p = any_cast<typename std::remove_reference<ValueType>::type>(&operand);
+		if(p == nullptr) return nullptr;
+    return *p;
+}
+
+template<typename ValueType>
+inline bool any_cast_test(const any& operand, ValueType const& result)
+{
+    auto p = any_cast<typename std::add_const<typename std::remove_reference<ValueType>::type>::type>(&operand);
+		if(p != nullptr) 
+		{
+			result = *p;
+			return true;
+		}
+    return false;
+}
+
+template<typename ValueType>
+inline bool any_cast_test(any& operand, ValueType& result)
+{
+    auto p = any_cast<typename std::remove_reference<ValueType>::type>(&operand);
+		if(p != nullptr) 
+		{
+			result = *p;
+			return true;
+		}
+    return false;
 }
 
 ///
