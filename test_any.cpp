@@ -200,4 +200,42 @@ int main()
         any r1 = regression1_type();
         CHECK(is_stack_allocated(r1, any_cast<const regression1_type>(&r1)));
     }
+
+    // correctly stored decayed and retrieved in decayed form
+    {
+        const int i = 42;
+        any a = i;
+
+        // retrieve 
+        CHECK(any_cast<int>(&a) != nullptr);
+        CHECK(any_cast<const int>(&a) != nullptr);
+
+
+        // must not throw
+        bool except1 = false, except2 = false, except3 = false;
+
+        // same with reference to any
+        try {
+            any_cast<int>(a);
+        }
+        catch(const bad_any_cast&) {
+            except1 = true;
+        }
+        try {
+            any_cast<const int>(a);
+        }
+        catch(const bad_any_cast&) {
+            except2 = true;
+        }
+        try {
+            any_cast<const int>(std::move(a));
+        }
+        catch(const bad_any_cast&) {
+            except3 = true;
+        }
+
+        CHECK(except1 == false);
+        CHECK(except2 == false);
+        CHECK(except3 == false);
+    }
 }
