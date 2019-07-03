@@ -2,6 +2,7 @@
 
 #include "any.hpp"
 #include <memory>
+#include <string>
 #include <cstdio>
 
 #define CHECK(x) ((x)? (void)(0) : (void(fprintf(stdout, "Failed at %d:%s: %s\n", __LINE__, __FILE__, #x)), std::exit(EXIT_FAILURE)))
