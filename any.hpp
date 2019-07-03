@@ -424,22 +424,26 @@ inline ValueType any_cast(any&& operand)
 
 /// If operand != nullptr && operand->type() == typeid(ValueType), a pointer to the object
 /// contained by operand, otherwise nullptr.
-template<typename T>
-inline const T* any_cast(const any* operand) noexcept
+template<typename ValueType>
+inline const ValueType* any_cast(const any* operand) noexcept
 {
+    using T = typename std::decay<ValueType>::type;
+
     if (operand && operand->vtable == any::vtable_for_type<T>())
-        return operand->cast<T>();
+        return operand->cast<ValueType>();
     else
         return nullptr;
 }
 
 /// If operand != nullptr && operand->type() == typeid(ValueType), a pointer to the object
 /// contained by operand, otherwise nullptr.
-template<typename T>
-inline T* any_cast(any* operand) noexcept
+template<typename ValueType>
+inline ValueType* any_cast(any* operand) noexcept
 {
+    using T = typename std::decay<ValueType>::type;
+
     if (operand && operand->vtable == any::vtable_for_type<T>())
-        return operand->cast<T>();
+        return operand->cast<ValueType>();
     else
         return nullptr;
 }
