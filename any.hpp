@@ -147,7 +147,7 @@ public:
             if(this->vtable != nullptr)
             {
                 this->vtable->move(this->storage, rhs.storage);
-                //this->vtable = nullptr; -- uneeded, see below
+                //this->vtable = nullptr; -- unneeded, see below
             }
 
             // move from tmp (previously rhs) to *this.
