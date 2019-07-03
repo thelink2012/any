@@ -68,18 +68,21 @@ int main()
         CHECK(x.empty() && y.empty() && z.empty());
     }
 
+#ifndef ANY_IMPL_NO_RTTI
     {
         CHECK(any().type() == typeid(void));
         CHECK(any(4).type() == typeid(int));
         CHECK(any(big_type()).type() == typeid(big_type));
         CHECK(any(1.5f).type() == typeid(float));
     }
+#endif
 
     {
         bool except0 = false;
         bool except1 = false, except2 = false;
         bool except3 = false, except4 = false;
 
+#ifndef ANY_IMPL_NO_EXCEPTIONS
         try {
             any_cast<int>(any());
         }
@@ -114,6 +117,7 @@ int main()
         catch(const bad_any_cast&) {
             except4 = true;
         }
+#endif
 
         CHECK(except0 == true);
         CHECK(except1 == true && except2 == false);
@@ -212,6 +216,7 @@ int main()
         CHECK(any_cast<const int>(&a) != nullptr);
 
 
+#ifndef ANY_IMPL_NO_EXCEPTIONS
         // must not throw
         bool except1 = false, except2 = false, except3 = false;
 
@@ -238,5 +243,6 @@ int main()
         CHECK(except1 == false);
         CHECK(except2 == false);
         CHECK(except3 == false);
+#endif
     }
 }

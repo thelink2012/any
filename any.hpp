@@ -20,6 +20,26 @@
 #include <type_traits>
 #include <stdexcept>
 
+
+#ifdef __cpp_exceptions
+// you can opt-out of exceptions by definining ANY_IMPL_NO_EXCEPTIONS,
+// but you must ensure not to cast badly when passing an `any' object to any_cast<T>(any)
+#else
+# if !defined(ANY_IMPL_NO_EXCEPTIONS) && !defined(ANY_IMPL_EXCEPTIONS)
+#   define ANY_IMPL_NO_EXCEPTIONS
+# endif
+#endif
+
+#ifdef __cpp_rtti
+// you can opt-out of RTTI by defining ANY_IMPL_NO_RTTI,
+// in order to disable functions determining the typeid of a type
+#else
+# if !defined(ANY_IMPL_NO_RTTI) && !defined(ANY_IMPL_RTTI)
+#   define ANY_IMPL_NO_RTTI
+# endif
+#endif
+
+
 namespace linb
 {
 
@@ -181,7 +201,7 @@ private: // Storage and Virtual Method Table
         // Note: The caller is responssible for doing .vtable = nullptr after destructful operations
         // such as destroy() and/or move().
 
-#ifdef __cpp_rtti
+#ifndef ANY_IMPL_NO_RTTI
         /// The type of the object this vtable is for.
         const std::type_info& (*type)() noexcept;
 #endif
@@ -206,7 +226,7 @@ private: // Storage and Virtual Method Table
     template<typename T>
     struct vtable_dynamic
     {
-#ifdef __cpp_rtti
+#ifndef ANY_IMPL_NO_RTTI
         static const std::type_info& type() noexcept
         {
             return typeid(T);
@@ -241,7 +261,7 @@ private: // Storage and Virtual Method Table
     template<typename T>
     struct vtable_stack
     {
-#ifdef __cpp_rtti
+#ifndef ANY_IMPL_NO_RTTI
         static const std::type_info& type() noexcept
         {
             return typeid(T);
@@ -290,7 +310,7 @@ private: // Storage and Virtual Method Table
     {
         using VTableType = typename std::conditional<requires_allocation<T>::value, vtable_dynamic<T>, vtable_stack<T>>::type;
         static vtable_type table = {
-#ifdef __cpp_rtti
+#ifndef ANY_IMPL_NO_RTTI
             VTableType::type,
 #endif
             VTableType::destroy,
@@ -377,7 +397,7 @@ template<typename ValueType>
 inline ValueType any_cast(const any& operand)
 {
     auto p = any_cast<typename std::add_const<typename std::remove_reference<ValueType>::type>::type>(&operand);
-#ifdef __cpp_exceptions
+#ifndef ANY_IMPL_NO_EXCEPTIONS
     if(p == nullptr) throw bad_any_cast();
 #endif
     return *p;
@@ -388,7 +408,7 @@ template<typename ValueType>
 inline ValueType any_cast(any& operand)
 {
     auto p = any_cast<typename std::remove_reference<ValueType>::type>(&operand);
-#ifdef __cpp_exceptions
+#ifndef ANY_IMPL_NO_EXCEPTIONS
     if(p == nullptr) throw bad_any_cast();
 #endif
     return *p;
@@ -416,7 +436,7 @@ inline ValueType any_cast(any&& operand)
 #endif
 
     auto p = any_cast<typename std::remove_reference<ValueType>::type>(&operand);
-#ifdef __cpp_exceptions
+#ifndef ANY_IMPL_NO_EXCEPTIONS
     if(p == nullptr) throw bad_any_cast();
 #endif
     return detail::any_cast_move_if_true<ValueType>(p, can_move());
