@@ -4,6 +4,9 @@
 #include <memory>
 #include <string>
 #include <cstdio>
+#if defined(ANY_IMPL_NO_EXCEPTIONS) && defined(_MSC_VER)
+# include <excpt.h>
+#endif
 
 #define CHECK(x) ((x)? (void)(0) : (void(fprintf(stdout, "Failed at %d:%s: %s\n", __LINE__, __FILE__, #x)), std::exit(EXIT_FAILURE)))
 
@@ -115,6 +118,38 @@ int main()
             any_cast<big_type>(any(big_type()));
         }
         catch(const bad_any_cast&) {
+            except4 = true;
+        }
+#elif _MSC_VER
+        // we can test segmentation faults with msvc
+
+# ifdef _CPPUNWIND
+#   error Must use msvc compiler with exceptions disabled (no /EHa, /EHsc, /EHs)
+# endif
+
+        __try {
+            any_cast<int>(any());
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            except0 = true;
+        }
+        __try {
+            any_cast<int>(any(4.0f));
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            except1 = true;
+        }
+        __try {
+            any_cast<float>(any(4.0f));
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            except2 = true;
+        }
+        __try {
+            any_cast<float>(any(big_type()));
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            except3 = true;
+        }
+        __try {
+            any_cast<big_type>(any(big_type()));
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
             except4 = true;
         }
 #endif
