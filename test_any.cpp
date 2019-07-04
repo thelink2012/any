@@ -2,7 +2,12 @@
 
 #include "any.hpp"
 #include <memory>
+#include <string>
+#include <cstdlib>
 #include <cstdio>
+#if defined(ANY_IMPL_NO_EXCEPTIONS) && defined(_MSC_VER)
+# include <excpt.h>
+#endif
 
 #define CHECK(x) ((x)? (void)(0) : (void(fprintf(stdout, "Failed at %d:%s: %s\n", __LINE__, __FILE__, #x)), std::exit(EXIT_FAILURE)))
 
@@ -67,18 +72,21 @@ int main()
         CHECK(x.empty() && y.empty() && z.empty());
     }
 
+#ifndef ANY_IMPL_NO_RTTI
     {
         CHECK(any().type() == typeid(void));
         CHECK(any(4).type() == typeid(int));
         CHECK(any(big_type()).type() == typeid(big_type));
         CHECK(any(1.5f).type() == typeid(float));
     }
+#endif
 
     {
         bool except0 = false;
         bool except1 = false, except2 = false;
         bool except3 = false, except4 = false;
 
+#ifndef ANY_IMPL_NO_EXCEPTIONS
         try {
             any_cast<int>(any());
         }
@@ -113,6 +121,39 @@ int main()
         catch(const bad_any_cast&) {
             except4 = true;
         }
+#elif _MSC_VER
+        // we can test segmentation faults with msvc
+
+# ifdef _CPPUNWIND
+#   error Must use msvc compiler with exceptions disabled (no /EHa, /EHsc, /EHs)
+# endif
+
+        __try {
+            any_cast<int>(any());
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            except0 = true;
+        }
+        __try {
+            any_cast<int>(any(4.0f));
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            except1 = true;
+        }
+        __try {
+            any_cast<float>(any(4.0f));
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            except2 = true;
+        }
+        __try {
+            any_cast<float>(any(big_type()));
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            except3 = true;
+        }
+        __try {
+            any_cast<big_type>(any(big_type()));
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            except4 = true;
+        }
+#endif
 
         CHECK(except0 == true);
         CHECK(except1 == true && except2 == false);
@@ -199,5 +240,45 @@ int main()
         // Regression test for GitHub Issue #1
         any r1 = regression1_type();
         CHECK(is_stack_allocated(r1, any_cast<const regression1_type>(&r1)));
+    }
+
+    // correctly stored decayed and retrieved in decayed form
+    {
+        const int i = 42;
+        any a = i;
+
+        // retrieve 
+        CHECK(any_cast<int>(&a) != nullptr);
+        CHECK(any_cast<const int>(&a) != nullptr);
+
+
+#ifndef ANY_IMPL_NO_EXCEPTIONS
+        // must not throw
+        bool except1 = false, except2 = false, except3 = false;
+
+        // same with reference to any
+        try {
+            any_cast<int>(a);
+        }
+        catch(const bad_any_cast&) {
+            except1 = true;
+        }
+        try {
+            any_cast<const int>(a);
+        }
+        catch(const bad_any_cast&) {
+            except2 = true;
+        }
+        try {
+            any_cast<const int>(std::move(a));
+        }
+        catch(const bad_any_cast&) {
+            except3 = true;
+        }
+
+        CHECK(except1 == false);
+        CHECK(except2 == false);
+        CHECK(except3 == false);
+#endif
     }
 }

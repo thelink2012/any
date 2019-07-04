@@ -8,7 +8,7 @@
 //   + https://cplusplus.github.io/LWG/lwg-active.html#2509
 //
 //
-// Copyright (c) 2016 Denilson das Mercês Amorim
+// Copyright (c) 2016 Denilson das MercÃªs Amorim
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -19,6 +19,26 @@
 #include <typeinfo>
 #include <type_traits>
 #include <stdexcept>
+
+
+#if defined(PARTICLE)
+#if !defined(__cpp_exceptions) && !defined(ANY_IMPL_NO_EXCEPTIONS) && !defined(ANY_IMPL_EXCEPTIONS)
+#   define ANY_IMPL_NO_EXCEPTIONS
+# endif
+#else
+// you can opt-out of exceptions by definining ANY_IMPL_NO_EXCEPTIONS,
+// but you must ensure not to cast badly when passing an `any' object to any_cast<T>(any)
+#endif
+
+#if defined(PARTICLE)
+#if !defined(__cpp_rtti) && !defined(ANY_IMPL_NO_RTTI) && !defined(ANY_IMPL_RTTI)
+#   define ANY_IMPL_NO_RTTI
+# endif
+#else
+// you can opt-out of RTTI by defining ANY_IMPL_NO_RTTI,
+// in order to disable functions working with the typeid of a type
+#endif
+
 
 namespace linb
 {
@@ -127,11 +147,13 @@ public:
         return this->vtable == nullptr;
     }
 
+#ifndef ANY_IMPL_NO_RTTI
     /// If *this has a contained object of type T, typeid(T); otherwise typeid(void).
     const std::type_info& type() const noexcept
     {
         return empty()? typeid(void) : this->vtable->type();
     }
+#endif
 
     /// Exchange the states of *this and rhs.
     void swap(any& rhs) noexcept
@@ -145,7 +167,7 @@ public:
             if(this->vtable != nullptr)
             {
                 this->vtable->move(this->storage, rhs.storage);
-                //this->vtable = nullptr; -- uneeded, see below
+                //this->vtable = nullptr; -- unneeded, see below
             }
 
             // move from tmp (previously rhs) to *this.
@@ -179,8 +201,10 @@ private: // Storage and Virtual Method Table
         // Note: The caller is responssible for doing .vtable = nullptr after destructful operations
         // such as destroy() and/or move().
 
+#ifndef ANY_IMPL_NO_RTTI
         /// The type of the object this vtable is for.
         const std::type_info& (*type)() noexcept;
+#endif
 
         /// Destroys the object in the union.
         /// The state of the union after this call is unspecified, caller must ensure not to use src anymore.
@@ -202,10 +226,12 @@ private: // Storage and Virtual Method Table
     template<typename T>
     struct vtable_dynamic
     {
+#ifndef ANY_IMPL_NO_RTTI
         static const std::type_info& type() noexcept
         {
             return typeid(T);
         }
+#endif
 
         static void destroy(storage_union& storage) noexcept
         {
@@ -235,10 +261,12 @@ private: // Storage and Virtual Method Table
     template<typename T>
     struct vtable_stack
     {
+#ifndef ANY_IMPL_NO_RTTI
         static const std::type_info& type() noexcept
         {
             return typeid(T);
         }
+#endif
 
         static void destroy(storage_union& storage) noexcept
         {
@@ -271,7 +299,7 @@ private: // Storage and Virtual Method Table
     template<typename T>
     struct requires_allocation :
         std::integral_constant<bool,
-                !(std::is_nothrow_move_constructible<T>::value      // N4562 §6.3/3 [any.class]
+                !(std::is_nothrow_move_constructible<T>::value      // N4562 Â§6.3/3 [any.class]
                   && sizeof(T) <= sizeof(storage_union::stack)
                   && std::alignment_of<T>::value <= std::alignment_of<storage_union::stack_storage_t>::value)>
     {};
@@ -282,7 +310,10 @@ private: // Storage and Virtual Method Table
     {
         using VTableType = typename std::conditional<requires_allocation<T>::value, vtable_dynamic<T>, vtable_stack<T>>::type;
         static vtable_type table = {
-            VTableType::type, VTableType::destroy,
+#ifndef ANY_IMPL_NO_RTTI
+            VTableType::type,
+#endif
+            VTableType::destroy,
             VTableType::copy, VTableType::move,
             VTableType::swap,
         };
@@ -387,7 +418,9 @@ template<typename ValueType>
 inline ValueType any_cast(const any& operand)
 {
     auto p = any_cast<typename std::add_const<typename std::remove_reference<ValueType>::type>::type>(&operand);
+#ifndef ANY_IMPL_NO_EXCEPTIONS
     if(p == nullptr) throw bad_any_cast();
+#endif
     return *p;
 }
 
@@ -396,7 +429,9 @@ template<typename ValueType>
 inline ValueType any_cast(any& operand)
 {
     auto p = any_cast<typename std::remove_reference<ValueType>::type>(&operand);
+#ifndef ANY_IMPL_NO_EXCEPTIONS
     if(p == nullptr) throw bad_any_cast();
+#endif
     return *p;
 }
 
@@ -422,30 +457,36 @@ inline ValueType any_cast(any&& operand)
 #endif
 
     auto p = any_cast<typename std::remove_reference<ValueType>::type>(&operand);
+#ifndef ANY_IMPL_NO_EXCEPTIONS
     if(p == nullptr) throw bad_any_cast();
+#endif
     return detail::any_cast_move_if_true<ValueType>(p, can_move());
 }
 
 /// If operand != nullptr && operand->type() == typeid(ValueType), a pointer to the object
 /// contained by operand, otherwise nullptr.
-template<typename T>
-inline const T* any_cast(const any* operand) noexcept
+template<typename ValueType>
+inline const ValueType* any_cast(const any* operand) noexcept
 {
-    if(operand == nullptr || !operand->is_typed(typeid(T)))
-        return nullptr;
+    using T = typename std::decay<ValueType>::type;
+
+    if (operand && operand->vtable == any::vtable_for_type<T>())
+        return operand->cast<ValueType>();
     else
-        return operand->cast<T>();
+        return nullptr;
 }
 
 /// If operand != nullptr && operand->type() == typeid(ValueType), a pointer to the object
 /// contained by operand, otherwise nullptr.
-template<typename T>
-inline T* any_cast(any* operand) noexcept
+template<typename ValueType>
+inline ValueType* any_cast(any* operand) noexcept
 {
-    if(operand == nullptr || !operand->is_typed(typeid(T)))
-        return nullptr;
+    using T = typename std::decay<ValueType>::type;
+
+    if (operand && operand->vtable == any::vtable_for_type<T>())
+        return operand->cast<ValueType>();
     else
-        return operand->cast<T>();
+        return nullptr;
 }
 
 }
