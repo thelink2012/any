@@ -8,7 +8,7 @@
 //   + https://cplusplus.github.io/LWG/lwg-active.html#2509
 //
 //
-// Copyright (c) 2016 Denilson das Mercês Amorim
+// Copyright (c) 2016 Denilson das MercÃªs Amorim
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -299,7 +299,7 @@ private: // Storage and Virtual Method Table
     template<typename T>
     struct requires_allocation :
         std::integral_constant<bool,
-                !(std::is_nothrow_move_constructible<T>::value      // N4562 §6.3/3 [any.class]
+                !(std::is_nothrow_move_constructible<T>::value      // N4562 Â§6.3/3 [any.class]
                   && sizeof(T) <= sizeof(storage_union::stack)
                   && std::alignment_of<T>::value <= std::alignment_of<storage_union::stack_storage_t>::value)>
     {};
@@ -325,6 +325,27 @@ protected:
     friend const T* any_cast(const any* operand) noexcept;
     template<typename T>
     friend T* any_cast(any* operand) noexcept;
+
+    /// Same effect as is_same(this->type(), t);
+    bool is_typed(const std::type_info& t) const
+    {
+        return is_same(this->type(), t);
+    }
+
+    /// Checks if two type infos are the same.
+    ///
+    /// If ANY_IMPL_FAST_TYPE_INFO_COMPARE is defined, checks only the address of the
+    /// type infos, otherwise does an actual comparision. Checking addresses is
+    /// only a valid approach when there's no interaction with outside sources
+    /// (other shared libraries and such).
+    static bool is_same(const std::type_info& a, const std::type_info& b)
+    {
+#ifdef ANY_IMPL_FAST_TYPE_INFO_COMPARE
+        return &a == &b;
+#else
+        return a == b;
+#endif
+    }
 
     /// Casts (with no type_info checks) the storage pointer as const T*.
     template<typename T>
