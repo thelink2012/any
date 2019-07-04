@@ -147,7 +147,7 @@ public:
         return this->vtable == nullptr;
     }
 
-#ifdef __cpp_rtti
+#ifndef ANY_IMPL_NO_RTTI
     /// If *this has a contained object of type T, typeid(T); otherwise typeid(void).
     const std::type_info& type() const noexcept
     {
