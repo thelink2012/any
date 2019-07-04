@@ -3,6 +3,7 @@
 #include "any.hpp"
 #include <memory>
 #include <string>
+#include <cstdlib>
 #include <cstdio>
 #if defined(ANY_IMPL_NO_EXCEPTIONS) && defined(_MSC_VER)
 # include <excpt.h>
