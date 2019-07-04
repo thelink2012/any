@@ -21,22 +21,22 @@
 #include <stdexcept>
 
 
-#ifdef __cpp_exceptions
-// you can opt-out of exceptions by definining ANY_IMPL_NO_EXCEPTIONS,
-// but you must ensure not to cast badly when passing an `any' object to any_cast<T>(any)
-#else
-# if !defined(ANY_IMPL_NO_EXCEPTIONS) && !defined(ANY_IMPL_EXCEPTIONS)
+#if defined(PARTICLE)
+#if !defined(__cpp_exceptions) && !defined(ANY_IMPL_NO_EXCEPTIONS) && !defined(ANY_IMPL_EXCEPTIONS)
 #   define ANY_IMPL_NO_EXCEPTIONS
 # endif
+#else
+// you can opt-out of exceptions by definining ANY_IMPL_NO_EXCEPTIONS,
+// but you must ensure not to cast badly when passing an `any' object to any_cast<T>(any)
 #endif
 
-#ifdef __cpp_rtti
-// you can opt-out of RTTI by defining ANY_IMPL_NO_RTTI,
-// in order to disable functions determining the typeid of a type
-#else
-# if !defined(ANY_IMPL_NO_RTTI) && !defined(ANY_IMPL_RTTI)
+#if defined(PARTICLE)
+#if !defined(__cpp_rtti) && !defined(ANY_IMPL_NO_RTTI) && !defined(ANY_IMPL_RTTI)
 #   define ANY_IMPL_NO_RTTI
 # endif
+#else
+// you can opt-out of RTTI by defining ANY_IMPL_NO_RTTI,
+// in order to disable functions working with the typeid of a type
 #endif
 
 
