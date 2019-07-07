@@ -415,25 +415,16 @@ inline ValueType any_cast(any& operand)
 }
 
 ///
-/// If ANY_IMPL_ANYCAST_MOVEABLE is not defined, does as N4562 specifies:
-///     Performs *any_cast<remove_reference_t<ValueType>>(&operand), or throws bad_any_cast on failure.
-///
-/// If ANY_IMPL_ANYCAST_MOVEABLE is defined, does as LWG Defect 2509 specifies:
-///     If ValueType is MoveConstructible and isn't a lvalue reference, performs
-///     std::move(*any_cast<remove_reference_t<ValueType>>(&operand)), otherwise
-///     *any_cast<remove_reference_t<ValueType>>(&operand). Throws bad_any_cast on failure.
+/// If ValueType is MoveConstructible and isn't a lvalue reference, performs
+/// std::move(*any_cast<remove_reference_t<ValueType>>(&operand)), otherwise
+/// *any_cast<remove_reference_t<ValueType>>(&operand). Throws bad_any_cast on failure.
 ///
 template<typename ValueType>
 inline ValueType any_cast(any&& operand)
 {
-#ifdef ANY_IMPL_ANY_CAST_MOVEABLE
-    // https://cplusplus.github.io/LWG/lwg-active.html#2509
     using can_move = std::integral_constant<bool,
         std::is_move_constructible<ValueType>::value
         && !std::is_lvalue_reference<ValueType>::value>;
-#else
-    using can_move = std::false_type;
-#endif
 
     auto p = any_cast<typename std::remove_reference<ValueType>::type>(&operand);
 #ifndef ANY_IMPL_NO_EXCEPTIONS

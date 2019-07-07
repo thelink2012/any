@@ -10,6 +10,5 @@ For a easy to understand documentation, see [cppreference](http://en.cppreferenc
 
 You may additionally define the following preprocessor symbols (making the implementation non-standard):
 
-  + `ANY_IMPL_ANY_CAST_MOVEABLE`: This implements a fix proposed in [LWG Defect 2509](https://cplusplus.github.io/LWG/lwg-active.html#2509). This will cause the expressions `T x = any_cast<T>(any(T()))` and `T x = any_cast<T&&>(any(T()))`to perform a move into `x` instead of a copy.
   + `ANY_IMPL_NO_EXCEPTIONS`: This disables code paths that throw exceptions.
   + `ANY_IMPL_NO_RTTI`: This disables `any::type()`, thus removing all code paths using RTTI.
