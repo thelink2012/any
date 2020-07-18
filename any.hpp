@@ -326,6 +326,31 @@ protected:
     template<typename T>
     friend T* any_cast(any* operand) noexcept;
 
+#ifndef ANY_IMPL_NO_RTTI
+    /// Same effect as is_same(this->type(), t);
+    bool is_typed(const std::type_info& t) const
+    {
+        return is_same(this->type(), t);
+    }
+#endif
+
+#ifndef ANY_IMPL_NO_RTTI
+    /// Checks if two type infos are the same.
+    ///
+    /// If ANY_IMPL_FAST_TYPE_INFO_COMPARE is defined, checks only the address of the
+    /// type infos, otherwise does an actual comparision. Checking addresses is
+    /// only a valid approach when there's no interaction with outside sources
+    /// (other shared libraries and such).
+    static bool is_same(const std::type_info& a, const std::type_info& b)
+    {
+#ifdef ANY_IMPL_FAST_TYPE_INFO_COMPARE
+        return &a == &b;
+#else
+        return a == b;
+#endif
+    }
+#endif
+
     /// Casts (with no type_info checks) the storage pointer as const T*.
     template<typename T>
     const T* cast() const noexcept
@@ -440,7 +465,11 @@ inline const ValueType* any_cast(const any* operand) noexcept
 {
     using T = typename std::decay<ValueType>::type;
 
+#ifndef ANY_IMPL_NO_RTTI
+    if (operand && operand->is_typed(typeid(T)))
+#else
     if (operand && operand->vtable == any::vtable_for_type<T>())
+#endif
         return operand->cast<ValueType>();
     else
         return nullptr;
@@ -453,7 +482,11 @@ inline ValueType* any_cast(any* operand) noexcept
 {
     using T = typename std::decay<ValueType>::type;
 
+#ifndef ANY_IMPL_NO_RTTI
+    if (operand && operand->is_typed(typeid(T)))
+#else
     if (operand && operand->vtable == any::vtable_for_type<T>())
+#endif
         return operand->cast<ValueType>();
     else
         return nullptr;
