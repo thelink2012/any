@@ -1,6 +1,7 @@
 // Very simplist test, could be better.
 
 #include "any.hpp"
+#include "test_shared_lib.hpp"
 #include <memory>
 #include <string>
 #include <cstdlib>
@@ -280,5 +281,30 @@ int main()
         CHECK(except2 == false);
         CHECK(except3 == false);
 #endif
+    }
+
+    {
+      bool except1 = false, except2 = false;
+      auto big_any = shared_test_lib::createBigData();
+      auto small_any = shared_test_lib::createSmallData();
+      try {
+          any_cast<shared_test_lib::big_data>(big_any);
+      } catch (const bad_any_cast &) {
+          except1 = true;
+      }
+      try {
+          any_cast<shared_test_lib::small_data>(small_any);
+      } catch (const bad_any_cast &) {
+          except2 = true;
+      }
+
+#ifndef ANY_IMPL_NO_RTTI
+      CHECK(except1 == false);
+      CHECK(except2 == false);
+#else
+      CHECK(except1 == true);
+      CHECK(except2 == true);
+#endif
+
     }
 }
