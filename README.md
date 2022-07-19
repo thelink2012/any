@@ -12,4 +12,4 @@ You may additionally define the following preprocessor symbols (making the imple
 
   + `ANY_IMPL_NO_EXCEPTIONS`: This disables code paths that throw exceptions.
   + `ANY_IMPL_NO_RTTI`: This disables `any::type()`, thus removing all code paths using RTTI.
-  + `ANY_IMPL_FAST_TYPE_INFO_COMPARE`: When checking if two `typeid` are the same, performs just a pointer comparision instead of the actual `type_info::operator==` comparision. Be aware this isn't recommended since objects passed across library boundaries mayn't compare equal. This has no effect if `ANY_IMPL_NO_RTTI` is defined.
+  + `ANY_IMPL_FAST_TYPE_INFO_COMPARE`: When checking if two `typeid` are the same, performs just a pointer comparison instead of the actual `type_info::operator==` comparison. Be aware this isn't recommended since objects passed across library boundaries mayn't compare equal. This has no effect if `ANY_IMPL_NO_RTTI` is defined.
