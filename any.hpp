@@ -20,7 +20,7 @@
 #include <type_traits>
 #include <stdexcept>
 #include <utility>
-
+#include <new>
 
 #if defined(PARTICLE)
 #if !defined(__cpp_exceptions) && !defined(ANY_IMPL_NO_EXCEPTIONS) && !defined(ANY_IMPL_EXCEPTIONS)
