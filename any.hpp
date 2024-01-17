@@ -493,14 +493,10 @@ inline ValueType* any_cast(any* operand) noexcept
         return nullptr;
 }
 
-}
-
-namespace std
+inline void swap(any& lhs, any& rhs) noexcept
 {
-    inline void swap(linb::any& lhs, linb::any& rhs) noexcept
-    {
-        lhs.swap(rhs);
-    }
+    lhs.swap(rhs);
+}
 }
 
 #endif
