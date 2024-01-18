@@ -6,6 +6,7 @@
 #include <string>
 #include <cstdlib>
 #include <cstdio>
+#include <vector>
 #if defined(ANY_IMPL_NO_EXCEPTIONS) && defined(_MSC_VER)
 # include <excpt.h>
 #endif
@@ -54,6 +55,7 @@ int main()
     using linb::any;
     using linb::any_cast;
     using linb::bad_any_cast;
+    using linb::make_any;
 
     {
         any x = 4;
@@ -73,6 +75,11 @@ int main()
         CHECK(x.empty() && y.empty() && z.empty());
     }
 
+    {
+        any o1 = make_any<std::vector<int>>({2, 2});
+        any o2 = make_any<std::vector<int>>(2, 2);
+        CHECK(any_cast<std::vector<int>>(o1) == any_cast<std::vector<int>>(o2));
+    }
 #ifndef ANY_IMPL_NO_RTTI
     {
         CHECK(any().type() == typeid(void));
