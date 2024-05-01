@@ -10,7 +10,7 @@ add_executable(test_any test_any.cpp)
 target_link_libraries(test_any PRIVATE test_lib)
 target_compile_options(test_any PRIVATE
   $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
-  $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra>
+  $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wuseless-cast>
 )
 
 add_test(test_any test_any)
